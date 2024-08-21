@@ -100,6 +100,7 @@ const createTauRPCProxy = async <TRouter extends Router>(
   const args_map = parseArgsMap(args)
   const listeners: Listeners = new Map()
   const event_handler: EventCallback<Payload> = (event) => {
+    console.log("event..")
     const path_segments = event.payload.event_name.split('.')
     const ev = path_segments.pop()
     if (!ev) return
@@ -136,17 +137,20 @@ const nestedProxy = (
 
       const method_name = p.toString()
       const nested_path = [...path, method_name]
-
       const args_map = args_maps
 
-      if (method_name === 'then' || !args_map) return {}
+      if (method_name === 'then') return {}
 
-      if (method_name in args_map) {
+      if(method_name in args_map && typeof args_map[method_name] === 'object') {
+        return nestedProxy(args_maps, listeners, nested_path)
+      }
+      const args_map2 = args_maps[path.join('.')]
+
+      if (method_name in args_map2) {
         return new window.Proxy(() => {
           // Empty fn
         }, {
           get: (_target, prop, _receiver) => {
-            console.log(_target, prop, _receiver)
             //if (prop !== 'on') return
 
             return (listener: (args: unknown) => void) => {
@@ -160,12 +164,10 @@ const nestedProxy = (
                 nested_path.join('.'),
                 args,
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                args_map[method_name]!,
+                args_map2[method_name]!,
             )
           },
         })
-      } else if (nested_path.join('.') in args_maps) {
-        return nestedProxy(args_maps, listeners, nested_path)
       } else {
         throw new Error(`'${nested_path.join('.')}' not found`)
       }
