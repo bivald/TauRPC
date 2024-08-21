@@ -11,80 +11,80 @@ type NestedRoutes = {
 type Router = NestedRoutes & { ''?: RoutesLayer }
 
 type FnInput<TInputs extends TauRpcInputs, TProc extends string> = Extract<
-  TInputs,
-  { proc_name: TProc }
+    TInputs,
+    { proc_name: TProc }
 >['input_type']
 type FnOutput<TOutputs extends TauRpcOutputs, TProc extends string> = Extract<
-  TOutputs,
-  { proc_name: TProc }
+    TOutputs,
+    { proc_name: TProc }
 >['output_type']
 
 type SingleParam = { __taurpc_type: unknown }
 
 type InvokeFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-  TInput = FnInput<TRoutes[0], TProc>,
-  TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
+    TRoutes extends RoutesLayer,
+    TProc extends string,
+    TInput = FnInput<TRoutes[0], TProc>,
+    TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
 > = TInput extends null ? (() => TOutput)
-  : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
-  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => TOutput)
-  : (() => TOutput)
+    : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
+        : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => TOutput)
+            : (() => TOutput)
 
 type ListenerFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-  TInput = FnInput<TRoutes[0], TProc>,
+    TRoutes extends RoutesLayer,
+    TProc extends string,
+    TInput = FnInput<TRoutes[0], TProc>,
 > = TInput extends null ? (() => void)
-  : TInput extends Array<unknown> ? ((...p: TInput) => void)
-  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => void)
-  : (() => void)
+    : TInput extends Array<unknown> ? ((...p: TInput) => void)
+        : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => void)
+            : (() => void)
 
 type UnlistenFn = () => void
 
 type InvokeLayer<
-  TRoutes extends RoutesLayer,
-  TProcedures extends string = TRoutes[0]['proc_name'],
+    TRoutes extends RoutesLayer,
+    TProcedures extends string = TRoutes[0]['proc_name'],
 > = {
   [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
-    on: (listener: ListenerFn<TRoutes, TProc>) => UnlistenFn
-  }
+  on: (listener: ListenerFn<TRoutes, TProc>) => UnlistenFn
+}
 }
 
 type SplitKeyNested<
-  TRouter extends NestedRoutes,
-  TPath extends keyof TRouter,
-  T extends string,
+    TRouter extends NestedRoutes,
+    TPath extends keyof TRouter,
+    T extends string,
 > = T extends `${infer A}.${infer B}`
-  ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
-  : {
-    [K in T]: TRouter[TPath] extends RoutesLayer ? InvokeLayer<TRouter[TPath]>
-      : never
-  }
+    ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
+    : {
+      [K in T]: TRouter[TPath] extends RoutesLayer ? InvokeLayer<TRouter[TPath]>
+          : never
+    }
 
 type RouterPathsToNestedObject<
-  TRouter extends NestedRoutes,
-  TPath extends keyof TRouter,
+    TRouter extends NestedRoutes,
+    TPath extends keyof TRouter,
 > = TPath extends `${infer A}.${infer B}`
-  ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
-  : {
-    [K in TPath]: TRouter[TPath] extends RoutesLayer
-      ? InvokeLayer<TRouter[TPath]>
-      : never
-  }
+    ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
+    : {
+      [K in TPath]: TRouter[TPath] extends RoutesLayer
+          ? InvokeLayer<TRouter[TPath]>
+          : never
+    }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
-  ((k: infer I) => void) ? I : never
+    ((k: infer I) => void) ? I : never
 
 type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
-  RouterPathsToNestedObject<TRouter, keyof TRouter>
+    RouterPathsToNestedObject<TRouter, keyof TRouter>
 >
 
 type TauRpcProxy<TRouter extends Router> =
-  & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
-    : object)
-  & ConvertToNestedObject<Omit<TRouter, ''>>
+    & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
+        : object)
+    & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {
   event_name: string
@@ -95,11 +95,10 @@ type Listeners = Map<string, (args: unknown) => void>
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
 const createTauRPCProxy = async <TRouter extends Router>(
-  args: Record<string, string>,
+    args: Record<string, string>,
 ) => {
   const args_map = parseArgsMap(args)
   const listeners: Listeners = new Map()
-
   const event_handler: EventCallback<Payload> = (event) => {
     const path_segments = event.payload.event_name.split('.')
     const ev = path_segments.pop()
@@ -115,7 +114,7 @@ const createTauRPCProxy = async <TRouter extends Router>(
       listener(event.payload.event.input_type)
     } else if (Array.isArray(event.payload.event.input_type)) {
       const _ = (listener as ((...args: unknown[]) => void))(
-        ...event.payload.event.input_type as unknown[],
+          ...event.payload.event.input_type as unknown[],
       )
     } else {
       listener(event.payload.event.input_type)
@@ -127,15 +126,19 @@ const createTauRPCProxy = async <TRouter extends Router>(
 }
 
 const nestedProxy = (
-  args_maps: Record<string, Record<string, string[]>>,
-  listeners: Listeners,
-  path: string[] = [],
+    args_maps: Record<string, Record<string, string[]>>,
+    listeners: Listeners,
+    path: string[] = [],
 ) => {
+  //path = ["individual", "project"]
   return new window.Proxy({}, {
     get(_target, p, _receiver): object {
+
       const method_name = p.toString()
       const nested_path = [...path, method_name]
-      const args_map = args_maps[path.join('.')]
+
+      const args_map = args_maps
+
       if (method_name === 'then' || !args_map) return {}
 
       if (method_name in args_map) {
@@ -143,7 +146,8 @@ const nestedProxy = (
           // Empty fn
         }, {
           get: (_target, prop, _receiver) => {
-            if (prop !== 'on') return
+            console.log(_target, prop, _receiver)
+            //if (prop !== 'on') return
 
             return (listener: (args: unknown) => void) => {
               listeners.set(nested_path.join('.'), listener)
@@ -153,10 +157,10 @@ const nestedProxy = (
           },
           apply(_target, _thisArg, args) {
             return handleProxyCall(
-              nested_path.join('.'),
-              args,
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              args_map[method_name]!,
+                nested_path.join('.'),
+                args,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                args_map[method_name]!,
             )
           },
         })
@@ -170,9 +174,9 @@ const nestedProxy = (
 }
 
 const handleProxyCall = async (
-  path: string,
-  args: unknown[],
-  procedure_args: string[],
+    path: string,
+    args: unknown[],
+    procedure_args: string[],
 ) => {
   const args_object: Record<string, unknown> = {}
 
@@ -184,8 +188,8 @@ const handleProxyCall = async (
   }
 
   const response = await invoke(
-    `TauRPC__${path}`,
-    args_object,
+      `TauRPC__${path}`,
+      args_object,
   )
   return response
 }
@@ -193,9 +197,9 @@ const handleProxyCall = async (
 const parseArgsMap = (args: Record<string, string>) => {
   const args_map: Record<string, Record<string, string[]>> = {}
   Object.entries(args).map(
-    ([path, args]) => {
-      args_map[path] = JSON.parse(args) as Record<string, string[]>
-    },
+      ([path, args]) => {
+        args_map[path] = JSON.parse(args) as Record<string, string[]>
+      },
   )
 
   return args_map
